@@ -54,7 +54,9 @@ The store wants to keep customer addresses. Propose two architectures for the CU
 **HINT:** search type 1 vs type 2 slowly changing dimensions. 
 
 ```
-Your answer...
+I can design the CUSTOMER_ADDRESS table in two ways. In a Type 1 overwrite architecture, I would store only the current address for each customer (optionally split by billing or shipping), and whenever the address changes, I would simply update the existing row so the old value is lost. In a Type 2 history architecture, I would store multiple rows per customer with effective start and end dates, along with a flag to mark the current record. When an address changes, I would update the previous row to close it out and insert a new row with the new address and start date, which preserves a full timeline of address changes. To ensure accuracy at checkout, each order could link directly to the historical address record that was valid when the purchase occurred.
+
+
 ```
 
 ***
