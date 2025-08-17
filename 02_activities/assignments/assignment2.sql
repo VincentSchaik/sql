@@ -5,12 +5,14 @@
 /* 1. Our favourite manager wants a detailed long list of products, but is afraid of tables! 
 We tell them, no problem! We can produce a list with all of the appropriate details. 
 
-Using the following syntax you create our super cool and not at all needy manager a list:
+Using the following syntax you create our super cool and not at all needy manager a list: */
 
 SELECT 
 product_name || ', ' || product_size|| ' (' || product_qty_type || ')'
-FROM product
+FROM product;
 
+
+/*
 But wait! The product table has some bad data (a few NULL values). 
 Find the NULLs and then using COALESCE, replace the NULL with a 
 blank for the first problem, and 'unit' for the second problem. 
@@ -20,7 +22,9 @@ The `||` values concatenate the columns into strings.
 Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. 
 All the other rows will remain the same.) */
 
-
+SELECT 
+product_name || ', ' || coalesce (product_size,'') || ' (' || coalesce(product_qty_type, 'unit') || ')' AS ['Product, size (unit)']
+FROM product;
 
 --Windowed Functions
 /* 1. Write a query that selects from the customer_purchases table and numbers each customer’s  
@@ -32,18 +36,101 @@ each new market date for each customer, or select only the unique market dates p
 (without purchase details) and number those visits. 
 HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK(). */
 
+/*Comparing ROW_NUMBER, RANK, DENSE_RANK*/
+SELECT *, 
+ROW_NUMBER() OVER (PARTITION by customer_id order by market_date) as visit_row_number,
+RANK() OVER (PARTITION by customer_id order by market_date) as visit_rank,
+DENSE_RANK() OVER (PARTITION by customer_id order by market_date) as visit_dense_rank 
+
+FROM customer_purchases;
+
+/*Option 1: With DISTINCT and ROW_NUMBER*/
+SELECT 
+    customer_id,
+    market_date,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date) AS visit_num
+FROM (
+    SELECT DISTINCT customer_id, market_date
+    FROM customer_purchases
+) cp
+ORDER BY customer_id, market_date;
+
+
+/*Option 2: Without DISTINCT and DENSE_RANK*/
+SELECT customer_id, market_date,
+DENSE_RANK() OVER (PARTITION by customer_id order by market_date) as visit_dense_rank 
+FROM (
+    SELECT DISTINCT customer_id, market_date
+    FROM customer_purchases
+) cp
+ORDER BY customer_id, market_date;
 
 
 /* 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, 
 then write another query that uses this one as a subquery (or temp table) and filters the results to 
 only the customer’s most recent visit. */
 
+/*Most recent visit per customer */
+SELECT * 
+FROM
+	(
+	SELECT customer_id, market_date,
+	DENSE_RANK() OVER (PARTITION by customer_id order by market_date DESC) as visit_dense_rank 
+	FROM (
+		SELECT DISTINCT customer_id, market_date
+		FROM customer_purchases
+	) cp
+	ORDER BY customer_id, market_date DESC
+) x
+WHERE x.visit_dense_rank = 1
+ORDER BY customer_id, market_date DESC;
 
+
+/*Using a temp table*/
+WITH recent_visits AS (
+    SELECT
+        customer_id,
+        market_date,
+        DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_dense_rank
+    FROM (
+        SELECT DISTINCT customer_id, market_date
+        FROM customer_purchases
+    )
+)
+SELECT *
+FROM recent_visits
+WHERE visit_dense_rank = 1
+ORDER BY customer_id, market_date DESC;
+
+/**Create a TEMP table*/
+DROP TABLE IF EXISTS temp.recent_visits; 
+CREATE TEMP TABLE IF NOT EXISTS temp.recent_visits AS
+SELECT
+    customer_id,
+    market_date,
+    DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_dense_rank
+FROM (
+    SELECT DISTINCT customer_id, market_date
+    FROM customer_purchases
+);
+
+/*Display each customer's recent visits */
+SELECT *
+FROM recent_visits
+WHERE visit_dense_rank = 1
+ORDER BY customer_id, market_date DESC;
 
 /* 3. Using a COUNT() window function, include a value along with each row of the 
 customer_purchases table that indicates how many different times that customer has purchased that product_id. */
-
-
+/*Total purchase rows per customer–product*/
+SELECT 
+  customer_id,
+  product_id,
+  market_date,
+  quantity,
+  COUNT(*) OVER (PARTITION BY customer_id, product_id) AS purchased_count
+FROM customer_purchases
+ORDER BY customer_id, product_id, market_date;
 
 -- String manipulations
 /* 1. Some product names in the product table have descriptions like "Jar" or "Organic". 
@@ -57,6 +144,7 @@ Remove any trailing or leading whitespaces. Don't just use a case statement for 
 
 Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR will help split the column. */
 
+SELECT * FROM product;
 
 
 /* 2. Filter the query to show any product_size value that contain a number with REGEXP. */

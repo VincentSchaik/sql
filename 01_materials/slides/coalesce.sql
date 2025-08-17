@@ -1,4 +1,7 @@
 
+SELECT *FROM product;
+
+
 --IFNULL and coalesce & NULLIF
 
 SELECT *
